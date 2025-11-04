@@ -1,27 +1,27 @@
 //
-// Created by Samarth Mahendra on 11/3/25.
+// ButterDB — Phase 1: B-tree based persistent KV store
 //
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include "kvstore.h"
+#include "btree.h"
 
 #define PORT 9090
 #define BUF_SIZE 1024
+#define DB_FILE "btree.dat"
 
 int main() {
-    KVStore store;
-    kv_init(&store);
+    // ---- Initialize B-tree ----
+    BTree *btree = btree_open(DB_FILE);
+    printf("ButterDB Phase 1 (B-tree) running on port %d...\n", PORT);
 
+    // ---- Network Setup ----
     int server_fd, client_fd;
     struct sockaddr_in addr;
     char buffer[BUF_SIZE];
 
-
-    // creating Socket = (IP address + port number + protocol)
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket failed");
         exit(EXIT_FAILURE);
@@ -31,7 +31,6 @@ int main() {
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(PORT);
 
-    // binding socket to the port
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("bind failed");
         exit(EXIT_FAILURE);
@@ -42,7 +41,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    printf("ButterDB server running on port %d...\n", PORT);
+    printf("Waiting for client connections...\n");
 
     while (1) {
         socklen_t addrlen = sizeof(addr);
@@ -52,7 +51,7 @@ int main() {
             continue;
         }
 
-        printf("Client connected!\n");
+        printf("Client connected.\n");
         while (1) {
             memset(buffer, 0, BUF_SIZE);
             int read_bytes = read(client_fd, buffer, BUF_SIZE - 1);
@@ -62,22 +61,24 @@ int main() {
             int args = sscanf(buffer, "%s %s %s", cmd, key, val);
 
             if (strcmp(cmd, "PUT") == 0 && args == 3) {
-                kv_put(&store, key, val);
+                btree_insert(btree, key, val);
                 write(client_fd, "OK\n", 3);
-            } else if (strcmp(cmd, "GET") == 0 && args >= 2) {
-                char *res = kv_get(&store, key);
-                if (res)
-                    dprintf(client_fd, "%s\n", res);
+            }
+            else if (strcmp(cmd, "GET") == 0 && args >= 2) {
+                char result[MAX_VAL_LEN];
+                if (btree_search(btree, btree->root_offset, key, result))
+                    dprintf(client_fd, "%s\n", result);
                 else
                     write(client_fd, "NOT_FOUND\n", 10);
-            } else if (strcmp(cmd, "DEL") == 0 && args >= 2) {
-                if (kv_del(&store, key) == 0)
-                    write(client_fd, "DELETED\n", 8);
-                else
-                    write(client_fd, "NOT_FOUND\n", 10);
-            } else if (strcmp(cmd, "EXIT") == 0) {
+            }
+            else if (strcmp(cmd, "DEL") == 0 && args >= 2) {
+                // Phase 1 doesn’t implement delete yet
+                write(client_fd, "DEL_NOT_SUPPORTED\n", 18);
+            }
+            else if (strcmp(cmd, "EXIT") == 0) {
                 break;
-            } else {
+            }
+            else {
                 write(client_fd, "INVALID\n", 8);
             }
         }
@@ -85,6 +86,7 @@ int main() {
         close(client_fd);
     }
 
+    btree_close(btree);
     close(server_fd);
     return 0;
 }

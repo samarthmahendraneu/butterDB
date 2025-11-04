@@ -69,3 +69,27 @@ butterdb/
 └── README.md
 
 ```
+
+```bash
+🚀 Phase 0 Benchmark Suite — KV Store (Hashmap Backend)
+
+🏁 Test 1 — Baseline Run (4 clients × 40k ops each)
+
+• Total Ops:     40,000
+• Total Time:    1.083 s
+• Throughput:    36945.4 ops/s
+• Avg Latency:   0.060 ms
+• p95 Latency:   0.031 ms
+• CPU Usage:     25.83%
+• Memory:        1.05 MB
+
+📈 Test 2 — Scaling with Concurrent Clients
+
+1 clients → 31774.7 ops/s, 0.02 ms avg, CPU 10.4%
+2 clients → 36782.8 ops/s, 0.04 ms avg, CPU 19.5%
+4 clients → 37679.9 ops/s, 0.06 ms avg, CPU 18.8%
+8 clients → 39389.5 ops/s, 0.11 ms avg, CPU 36.6%
+16 clients → 34550.9 ops/s, 0.21 ms avg, CPU 29.3%
+32 clients → 16237.2 ops/s, 0.68 ms avg, CPU 15.0%
+
+```
