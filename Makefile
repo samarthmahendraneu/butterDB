@@ -1,7 +1,11 @@
+CC = gcc
+CFLAGS = -Wall -O2
+
+# Change target name to match your file
 all: dbserver
 
-dbserver: dbserver.c kvstore.c
-	$(CC) -Wall -O2 dbserver.c kvstore.c -o dbserver
+dbserver: dbserver.c btree.c
+	$(CC) $(CFLAGS) dbserver.c btree.c -o butterdb
 
 clean:
-	rm -f dbserver
+	rm -f butterdb btree.dat
