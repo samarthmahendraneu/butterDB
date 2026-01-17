@@ -1,42 +1,42 @@
-# 🧩 Phase 0 — In-Memory Single-Threaded Server
+# 🧈 ButterDB — Phase 2: Concurrent Persistent B-Tree
 
 ### 🎯 Goal
-Build the first prototype of **ButterDB** — a minimal, single-threaded key-value database server.  
-It listens on a TCP port, accepts simple text commands (`PUT`, `GET`, `DEL`), and stores all data in memory.  
-Focus: establish the **client–server protocol** and **network communication** before persistence.
+Build a serious database engine from scratch.  
+**ButterDB** is now a **multi-threaded, persistent Key-Value Store** built on a B-Tree structure. It features a custom paging engine, buffer pool, write-ahead logging (WAL) for durability, and fine-grained locking for concurrency.
 
 ---
 
-### 🧠 Overview
-- **Server:** Single-threaded TCP server handling one client at a time.
-- **Protocol:** Plain-text commands over sockets.
-- **Storage:** Fixed-size in-memory key-value table (`KVStore`).
-- **Client:** Reads from stdin → sends commands → prints responses.
+### 🧠 Features
+
+- **Storage Engine:** Fixed-size **4KB Paged Architecture** (custom `pager.c`).
+- **Data Structure:** Disk-resident **B-Tree**.
+- **Durability (ACID):** **Write-Ahead Logging (WAL)** ensures no data loss on power failure.
+- **Concurrency:**
+    - **Latch Crabbing** (Lock Coupling) allowing multiple threads to traverse the tree in parallel.
+    - **Thread-Safe WAL** with atomic appends.
+    - **Multi-threaded Server** handling concurrent TCP connections.
 
 ---
 
 ### ⚙️ Architecture
 
-#### 🖥️ Server (`dbserver.c`)
-- Creates socket → `bind()` → `listen()` → `accept()`.
-- Reads and parses commands like:
+#### 1. The Pager (`pager.c`)
+- Abstraction over the OS file system.
+- Reads/Writes 4KB blocks (`page_id * 4096`).
 
-PUT key value
-GET key
-DEL key
-EXIT
+#### 2. The Buffer Pool (`btree.c`)
+- Caches frequently accessed pages in RAM.
+- **Pinning:** Protects pages from eviction while in use.
+- **Eviction:** Uses a "Clock" or "First-Unpinned" policy to flush dirty pages to disk when memory is full.
 
-- Executes the corresponding KV functions and returns results to the client.
+#### 3. Concurrency Control
+- **Fine-Grained Locking:** Uses `pthread_mutex` per Page.
+- **Protocol:** "Latch Crabbing" — Lock Parent → Lock Child → Unlock Parent.
+- **Deadlock Free:** Top-down locking order guarantees no circular waits.
 
-#### 💾 Storage (`kvstore.c` / `kvstore.h`)
-- `kv_put()` — insert or update key-value pairs
-- `kv_get()` — fetch value for a key
-- `kv_del()` — delete an entry
-- Data lives entirely in RAM (non-persistent).
-
-#### 🧑‍💻 Client (`dbclient.c`)
-- Connects to the server via TCP.
-- Reads commands from stdin, sends them, and prints responses.
+#### 4. Durability & Recovery (`wal.c`)
+- **WAL Protocol:** Log records are written to `butterdb.wal` *before* dirty pages touch the disk.
+- **Crash Recovery:** On startup, re-plays the log to reconstruct lost in-memory state.
 
 ---
 
@@ -44,52 +44,33 @@ EXIT
 
 ```bash
 make
-./dbserver  # Start the ButterDB server
-
-
-nc localhost 9090   # Connect as client
-PUT name samarth
-OK
-GET name
-samarth
-DEL name
-DELETED
-EXIT
-
-Connection closed by foreign host.
+./butterdb
+# Output:
+# Recovering from WAL... (Iterating)
+# ButterDB Phase 1 (B-tree) running on port 9090...
+# Waiting for client connections (Multi-threaded)...
 ```
+
+**Client connection (via telnet or nc):**
+
+```bash
+nc localhost 9090
+PUT user:1 {"name": "Alice"}
+OK
+GET user:1
+{"name": "Alice"}
+```
+
+### 📂 File Structure
 
 ```bash
 butterdb/
-├── dbserver.c     # TCP server and command handler
-├── dbclient.c     # Simple command-line client
-├── kvstore.c      # In-memory key-value store logic
-├── kvstore.h      # Struct definitions and function prototypes
+├── dbserver.c     # Multi-threaded TCP server
+├── btree.c        # B-Tree implementation (Buffer Pool + Concurrency)
+├── pager.c        # Fixed-Page Storage Engine
+├── wal.c          # Write-Ahead Log (Durability)
+├── btree.h        # Data structures
+├── wal.h          # WAL interface
 ├── Makefile       # Build script
 └── README.md
-
-```
-
-```bash
-🚀 Phase 0 Benchmark Suite — KV Store (Hashmap Backend)
-
-🏁 Test 1 — Baseline Run (4 clients × 40k ops each)
-
-• Total Ops:     40,000
-• Total Time:    1.083 s
-• Throughput:    36945.4 ops/s
-• Avg Latency:   0.060 ms
-• p95 Latency:   0.031 ms
-• CPU Usage:     25.83%
-• Memory:        1.05 MB
-
-📈 Test 2 — Scaling with Concurrent Clients
-
-1 clients → 31774.7 ops/s, 0.02 ms avg, CPU 10.4%
-2 clients → 36782.8 ops/s, 0.04 ms avg, CPU 19.5%
-4 clients → 37679.9 ops/s, 0.06 ms avg, CPU 18.8%
-8 clients → 39389.5 ops/s, 0.11 ms avg, CPU 36.6%
-16 clients → 34550.9 ops/s, 0.21 ms avg, CPU 29.3%
-32 clients → 16237.2 ops/s, 0.68 ms avg, CPU 15.0%
-
 ```
