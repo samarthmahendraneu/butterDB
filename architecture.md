@@ -28,9 +28,9 @@ To allow multiple operations to run safely in parallel (future-proofing the engi
 ### The Technique: "Latch Crabbing" (or Coupling)
 - **Goal**: To modify a leaf node without blocking the availability of the Root for other readers.
 - **How you implemented it**:
-    1.  **Lock Parent**: Acquire lock on the current node.
-    2.  **Safety Check**: Is this node "safe"? (e.g., for insert, not full).
-    3.  **Lock Child & Release Parent**: If safe, release the parent lock immediately after locking the child.
+  1.  **Lock Parent**: Acquire lock on the current node.
+  2.  **Safety Check**: Is this node "safe"? (e.g., for insert, not full).
+  3.  **Lock Child & Release Parent**: If safe, release the parent lock immediately after locking the child.
 - **Effect**: Threads "crab" down the tree `(Lock A -> Lock B -> Unlock A)`.
 - **Trade-off**: This implementation is "pessimistic" (locks are exclusive). Optimistic approaches involves Reader-Writer locks (Shared for read, Exclusive for write).
 

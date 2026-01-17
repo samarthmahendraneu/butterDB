@@ -17,17 +17,21 @@ WAL *wal_open(const char *filename) {
     }
     WAL *wal = malloc(sizeof(WAL));
     wal->fd = fd;
+    pthread_mutex_init(&wal->lock, NULL);
     return wal;
 }
 
 void wal_close(WAL *wal) {
     close(wal->fd);
+    pthread_mutex_destroy(&wal->lock);
     free(wal);
 }
 
 static lsn_t current_lsn = 0; 
 
 lsn_t wal_log_insert(WAL *wal, const char *key, const char *value) {
+    pthread_mutex_lock(&wal->lock);
+
     if (current_lsn == 0) {
         struct stat st;
         fstat(wal->fd, &st);
@@ -48,6 +52,7 @@ lsn_t wal_log_insert(WAL *wal, const char *key, const char *value) {
     write(wal->fd, key, klen);
     write(wal->fd, value, vlen);
     
+    pthread_mutex_unlock(&wal->lock);
     return this_lsn;
 }
 

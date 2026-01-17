@@ -11,8 +11,11 @@ typedef enum {
     LOG_CHECKPOINT = 2
 } LogType;
 
+#include <pthread.h>
+
 typedef struct {
     int fd;
+    pthread_mutex_t lock;
 } WAL;
 
 WAL *wal_open(const char *filename);
