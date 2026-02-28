@@ -20,6 +20,11 @@ Build a serious database engine from scratch.
 
 ### ⚙️ Architecture
 
+<img width="1358" height="1182" alt="image" src="https://github.com/user-attachments/assets/1fdd81b8-7e5d-4eb2-b46d-74d46c0fcede" />
+
+https://excalidraw.com/#json=sf7-nVIwhUrWbGRNW11mp,aXHw-GSD1zc3wF-r0HB-kw
+
+
 #### 1. The Pager (`pager.c`)
 - Abstraction over the OS file system.
 - Reads/Writes 4KB blocks (`page_id * 4096`).
